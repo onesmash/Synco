@@ -5,19 +5,22 @@ public delegate void Excutor();
 
 public delegate Signal Runnable();
 
-public class Synco : MonoBehaviour {
+public class Synco {
 	
-	static Synco getSynco(MonoBehaviour behaviour) {
-		Synco synco = behaviour.gameObject.GetComponent<Synco>();
-		if(synco == null) {
-			synco = behaviour.gameObject.AddComponent<Synco>();
-		}
-		return synco;
+	public static void delayExcute(MonoBehaviour behaviour, float time, Excutor excutor) {
+		seqExcute(behaviour,
+			() => {
+				return sleep(behaviour, time);
+			},
+			() => {
+				excutor();
+				return Signal.TRUE;
+			});
 	}
 	
 	public static Signal seqExcute(MonoBehaviour behaviour, params Runnable[] runnables) {
-		Synco synco = getSynco(behaviour);
-		return waitCoroutine(behaviour, behaviour.StartCoroutine(synco.seq(runnables)));
+		
+		return waitCoroutine(behaviour, behaviour.StartCoroutine(seq(behaviour, runnables)));
 	}
 	
 	public static Signal parExcute(MonoBehaviour behaviour, params Runnable[] runnables) {
@@ -35,13 +38,12 @@ public class Synco : MonoBehaviour {
 	}
 	
 	public static Signal sleep(MonoBehaviour behaviour, float time) {
-		Synco synco = getSynco(behaviour);
-		return waitCoroutine(behaviour, behaviour.StartCoroutine(synco.sleep(time)));
+		return waitCoroutine(behaviour, behaviour.StartCoroutine(sleep(time)));
 	}
 	
-	IEnumerator seq(Runnable[] runnables) {
+	static IEnumerator seq(MonoBehaviour behaviour, Runnable[] runnables) {
 		foreach(Runnable runnable in runnables) {
-			yield return StartCoroutine(repeatUntil(runnable(), Time.fixedDeltaTime, null, null));
+			yield return behaviour.StartCoroutine(repeatUntil(runnable(), Time.fixedDeltaTime, null, null));
 		}
 	}
 	
@@ -50,7 +52,7 @@ public class Synco : MonoBehaviour {
 		sig.state = true;
 	}
 	
-	IEnumerator repeatUntil(Signal signal, float time, Excutor handlerForFalse, Excutor handlerForTrue) {
+	static IEnumerator repeatUntil(Signal signal, float time, Excutor handlerForFalse, Excutor handlerForTrue) {
 		while(!signal.state) {
 			if(handlerForFalse != null) handlerForFalse();
 			yield return new WaitForSeconds(time);
@@ -58,7 +60,7 @@ public class Synco : MonoBehaviour {
 		if(handlerForTrue != null) handlerForTrue();
 	}
 	
-	IEnumerator sleep(float time) {
+	static IEnumerator sleep(float time) {
 		yield return new WaitForSeconds(time);
 	}
 }
